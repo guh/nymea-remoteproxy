@@ -6,6 +6,7 @@ TARGET = nymea-remoteproxy
 HEADERS += \
     engine.h \
     loggingcategories.h \
+    tcpsocketserver.h \
     transportinterface.h \
     websocketserver.h \
     proxyclient.h \
@@ -31,6 +32,7 @@ HEADERS += \
 SOURCES += \
     engine.cpp \
     loggingcategories.cpp \
+    tcpsocketserver.cpp \
     transportinterface.cpp \
     websocketserver.cpp \
     proxyclient.cpp \

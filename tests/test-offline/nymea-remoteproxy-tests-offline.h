@@ -48,6 +48,9 @@ private slots:
     void websocketBinaryData();
     void websocketPing();
 
+    // TCP socket connection
+
+
     // Api
     void getIntrospect();
     void getHello();
@@ -72,6 +75,9 @@ private slots:
     void inactiveTimeout();
     void authenticationReplyTimeout();
     void authenticationReplyConnection();
+
+    // TCP Websocket combinations
+
 
 };
 
