@@ -66,10 +66,10 @@ void Engine::start(ProxyConfiguration *configuration)
     Q_ASSERT_X(m_authenticator != nullptr, "Engine", "There is no authenticator registerd.");
 
     m_proxyServer = new ProxyServer(this);
-    m_webSocketServer = new WebSocketServer(m_configuration->sslConfiguration(), this);
+    m_webSocketServer = new WebSocketServer(m_configuration->sslEnabled(), m_configuration->sslConfiguration(), this);
 
     QUrl websocketServerUrl;
-    websocketServerUrl.setScheme("wss");
+    websocketServerUrl.setScheme(m_configuration->sslEnabled() ? "wss" : "ws");
     websocketServerUrl.setHost(m_configuration->webSocketServerHost().toString());
     websocketServerUrl.setPort(m_configuration->webSocketServerPort());
 

@@ -40,15 +40,12 @@ public:
     explicit WebSocketConnection(QObject *parent = nullptr);
     ~WebSocketConnection() override;
 
-    QUrl serverUrl() const override;
-
     void sendData(const QByteArray &data) override;
 
     void ignoreSslErrors() override;
     void ignoreSslErrors(const QList<QSslError> &errors) override;
 
 private:
-    QUrl m_serverUrl;
     QWebSocket *m_webSocket = nullptr;
 
 private slots:

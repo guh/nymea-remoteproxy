@@ -37,6 +37,15 @@ RemoteProxyConnection::RemoteProxyConnection(const QUuid &clientUuid, const QStr
 
 }
 
+RemoteProxyConnection::RemoteProxyConnection(const QUuid &clientUuid, const QString &clientName, RemoteProxyConnection::ConnectionType connectionType, QObject *parent) :
+    QObject(parent),
+    m_clientUuid(clientUuid),
+    m_clientName(clientName),
+    m_connectionType(connectionType)
+{
+
+}
+
 RemoteProxyConnection::~RemoteProxyConnection()
 {
 

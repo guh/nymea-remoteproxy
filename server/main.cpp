@@ -180,9 +180,11 @@ int main(int argc, char *argv[])
     }
 
     // Verify SSL configuration
-    if (configuration->sslConfiguration().isNull()) {
-        qCCritical(dcApplication()) << "No SSL configuration specified. The server does not suppoert insecure connections.";
+    if (configuration->sslEnabled() && configuration->sslConfiguration().isNull()) {
+        qCCritical(dcApplication()) << "SSL is enabled but no SSL configuration specified.";
         exit(-1);
+    } else {
+        qCDebug(dcApplication()) << "Using SSL version:" << QSslSocket::sslLibraryVersionString();
     }
 
     qCDebug(dcApplication()) << "==========================================================";
@@ -197,7 +199,6 @@ int main(int argc, char *argv[])
     if (s_loggingEnabled)
         qCDebug(dcApplication()) << "Logging enabled. Writing logs to" << s_logFile.fileName();
 
-    qCDebug(dcApplication()) << "Using SSL version:" << QSslSocket::sslLibraryVersionString();
 
     Authenticator *authenticator = nullptr;
     if (parser.isSet(mockAuthenticatorOption)) {

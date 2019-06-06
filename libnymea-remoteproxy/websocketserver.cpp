@@ -26,8 +26,9 @@
 
 namespace remoteproxy {
 
-WebSocketServer::WebSocketServer(const QSslConfiguration &sslConfiguration, QObject *parent) :
+WebSocketServer::WebSocketServer(bool sslEnabled, const QSslConfiguration &sslConfiguration, QObject *parent) :
     TransportInterface(parent),
+    m_sslEnabled(sslEnabled),
     m_sslConfiguration(sslConfiguration)
 {
     m_serverName = "Websocket server";
@@ -175,8 +176,12 @@ void WebSocketServer::onServerError(QWebSocketProtocol::CloseCode closeCode)
 
 bool WebSocketServer::startServer()
 {
-    m_server = new QWebSocketServer(QCoreApplication::applicationName(), QWebSocketServer::SecureMode, this);
-    m_server->setSslConfiguration(sslConfiguration());
+    if (m_sslEnabled) {
+        m_server = new QWebSocketServer(QCoreApplication::applicationName(), QWebSocketServer::SecureMode, this);
+        m_server->setSslConfiguration(sslConfiguration());
+    } else {
+        m_server = new QWebSocketServer(QCoreApplication::applicationName(), QWebSocketServer::NonSecureMode, this);
+    }
 
     connect (m_server, &QWebSocketServer::newConnection, this, &WebSocketServer::onClientConnected);
     connect (m_server, &QWebSocketServer::acceptError, this, &WebSocketServer::onAcceptError);

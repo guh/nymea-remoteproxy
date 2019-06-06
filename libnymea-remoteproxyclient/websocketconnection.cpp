@@ -43,11 +43,6 @@ WebSocketConnection::~WebSocketConnection()
     m_webSocket->close();
 }
 
-QUrl WebSocketConnection::serverUrl() const
-{
-    return m_serverUrl;
-}
-
 void WebSocketConnection::sendData(const QByteArray &data)
 {
     m_webSocket->sendTextMessage(QString::fromUtf8(data + '\n'));
@@ -102,10 +97,10 @@ void WebSocketConnection::connectServer(const QUrl &serverUrl)
     if (connected()) {
         m_webSocket->close();
     }
+    setServerUrl(serverUrl);
 
-    m_serverUrl = serverUrl;
-    qCDebug(dcRemoteProxyClientWebSocket()) << "Connecting to" << m_serverUrl.toString();
-    m_webSocket->open(m_serverUrl);
+    qCDebug(dcRemoteProxyClientWebSocket()) << "Connecting to" << this->serverUrl().toString();
+    m_webSocket->open(this->serverUrl());
 }
 
 void WebSocketConnection::disconnectServer()

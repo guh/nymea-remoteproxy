@@ -28,6 +28,11 @@ ProxyConnection::ProxyConnection(QObject *parent) : QObject(parent)
 
 }
 
+QUrl ProxyConnection::serverUrl() const
+{
+    return m_serverUrl;
+}
+
 bool ProxyConnection::connected()
 {
     return m_connected;
@@ -40,6 +45,11 @@ void ProxyConnection::setConnected(bool connected)
 
     m_connected = connected;
     emit connectedChanged(m_connected);
+}
+
+void ProxyConnection::setServerUrl(const QUrl &serverUrl)
+{
+    m_serverUrl = serverUrl;
 }
 
 ProxyConnection::~ProxyConnection()
