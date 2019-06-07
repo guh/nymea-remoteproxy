@@ -67,7 +67,7 @@ void RemoteProxyOfflineTests::dummyAuthenticator()
     params.insert("name", "test");
     params.insert("token", "foobar");
 
-    QVariant response = invokeApiCall("Authentication.Authenticate", params);
+    QVariant response = invokeWebSocketApiCall("Authentication.Authenticate", params);
     qDebug() << qUtf8Printable(QJsonDocument::fromVariant(response).toJson(QJsonDocument::Indented));
     verifyAuthenticationError(response);
 
@@ -285,7 +285,7 @@ void RemoteProxyOfflineTests::getIntrospect()
     // Start the server
     startServer();
 
-    QVariant response = invokeApiCall("RemoteProxy.Introspect");
+    QVariant response = invokeWebSocketApiCall("RemoteProxy.Introspect");
     qDebug() << qUtf8Printable(QJsonDocument::fromVariant(response).toJson(QJsonDocument::Indented));
 
     // Clean up
@@ -297,7 +297,7 @@ void RemoteProxyOfflineTests::getHello()
     // Start the server
     startServer();
 
-    QVariantMap response = invokeApiCall("RemoteProxy.Hello").toMap();
+    QVariantMap response = invokeWebSocketApiCall("RemoteProxy.Hello").toMap();
     qDebug() << qUtf8Printable(QJsonDocument::fromVariant(response).toJson(QJsonDocument::Indented));
 
     // Verify data
@@ -336,7 +336,7 @@ void RemoteProxyOfflineTests::apiBasicCalls()
     // Start the server
     startServer();
 
-    QVariant response = injectSocketData(data);
+    QVariant response = injectWebSocketData(data);
     qDebug() << qUtf8Printable(QJsonDocument::fromVariant(response).toJson(QJsonDocument::Indented));
 
     QCOMPARE(response.toMap().value("id").toInt(), responseId);
@@ -403,7 +403,7 @@ void RemoteProxyOfflineTests::authenticate()
     params.insert("token", token);
     if (!nonce.isEmpty()) params.insert("nonce", nonce);
 
-    QVariant response = invokeApiCall("Authentication.Authenticate", params);
+    QVariant response = invokeWebSocketApiCall("Authentication.Authenticate", params);
     qDebug() << qUtf8Printable(QJsonDocument::fromVariant(response).toJson(QJsonDocument::Indented));
     verifyAuthenticationError(response, expectedError);
 
@@ -886,7 +886,7 @@ void RemoteProxyOfflineTests::jsonRpcTimeout()
     params.insert("name", "name");
     params.insert("token", "token");
 
-    QVariant response = invokeApiCall("Authentication.Authenticate", params);
+    QVariant response = invokeWebSocketApiCall("Authentication.Authenticate", params);
     qDebug() << qUtf8Printable(QJsonDocument::fromVariant(response).toJson(QJsonDocument::Indented));
 
     QVERIFY(response.toMap().value("status").toString() == "error");
@@ -937,7 +937,7 @@ void RemoteProxyOfflineTests::authenticationReplyTimeout()
     params.insert("name", "Sleepy test client");
     params.insert("token", "sleepy token zzzZZZ");
 
-    QVariant response = invokeApiCall("Authentication.Authenticate", params);
+    QVariant response = invokeWebSocketApiCall("Authentication.Authenticate", params);
     qDebug() << qUtf8Printable(QJsonDocument::fromVariant(response).toJson(QJsonDocument::Indented));
     verifyAuthenticationError(response, Authenticator::AuthenticationErrorTimeout);
 

@@ -22,6 +22,7 @@
 #ifndef TRANSPORTINTERFACE_H
 #define TRANSPORTINTERFACE_H
 
+#include <QUrl>
 #include <QObject>
 #include <QHostAddress>
 
@@ -39,12 +40,18 @@ public:
     virtual void sendData(const QUuid &clientId, const QByteArray &data) = 0;
     virtual void killClientConnection(const QUuid &clientId, const QString &killReason) = 0;
 
+    QUrl serverUrl() const;
+    void setServerUrl(const QUrl &serverUrl);
+
+    virtual bool running() const = 0;
+
 signals:
     void clientConnected(const QUuid &clientId, const QHostAddress &address);
     void clientDisconnected(const QUuid &clientId);
     void dataAvailable(const QUuid &clientId, const QByteArray &data);
 
 protected:
+    QUrl m_serverUrl;
     QString m_serverName;
 
 public slots:

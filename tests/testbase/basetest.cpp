@@ -83,6 +83,7 @@ void BaseTest::startServer()
     QVERIFY(Engine::instance()->running());
     QVERIFY(Engine::instance()->developerMode());
     QVERIFY(Engine::instance()->webSocketServer()->running());
+    QVERIFY(Engine::instance()->tcpSocketServer()->running());
     QVERIFY(Engine::instance()->monitorServer()->running());
 }
 
@@ -95,7 +96,7 @@ void BaseTest::stopServer()
     QVERIFY(!Engine::instance()->running());
 }
 
-QVariant BaseTest::invokeApiCall(const QString &method, const QVariantMap params, bool remainsConnected)
+QVariant BaseTest::invokeWebSocketApiCall(const QString &method, const QVariantMap params, bool remainsConnected)
 {
     Q_UNUSED(remainsConnected)
 
@@ -146,11 +147,12 @@ QVariant BaseTest::invokeApiCall(const QString &method, const QVariantMap params
             return jsonDoc.toVariant();
         }
     }
+
     m_commandCounter++;
     return QVariant();
 }
 
-QVariant BaseTest::injectSocketData(const QByteArray &data)
+QVariant BaseTest::injectWebSocketData(const QByteArray &data)
 {
     QWebSocket *socket = new QWebSocket("proxy-testclient", QWebSocketProtocol::Version13);
     connect(socket, &QWebSocket::sslErrors, this, &BaseTest::sslErrors);

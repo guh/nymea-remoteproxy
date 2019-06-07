@@ -67,19 +67,31 @@ void Engine::start(ProxyConfiguration *configuration)
 
     m_proxyServer = new ProxyServer(this);
     m_webSocketServer = new WebSocketServer(m_configuration->sslEnabled(), m_configuration->sslConfiguration(), this);
+    m_tcpSocketServer = new TcpSocketServer(m_configuration->sslEnabled(), m_configuration->sslConfiguration(), this);
 
+    // Configure websocket server
     QUrl websocketServerUrl;
     websocketServerUrl.setScheme(m_configuration->sslEnabled() ? "wss" : "ws");
     websocketServerUrl.setHost(m_configuration->webSocketServerHost().toString());
     websocketServerUrl.setPort(m_configuration->webSocketServerPort());
-
     m_webSocketServer->setServerUrl(websocketServerUrl);
 
-    m_proxyServer->registerTransportInterface(m_webSocketServer);
+    // Configure tcp socket server
+    QUrl tcpSocketServerUrl;
+    tcpSocketServerUrl.setScheme(m_configuration->sslEnabled() ? "ssl" : "tcp");
+    tcpSocketServerUrl.setHost(m_configuration->tcpServerHost().toString());
+    tcpSocketServerUrl.setPort(m_configuration->tcpServerPort());
+    m_tcpSocketServer->setServerUrl(tcpSocketServerUrl);
 
+    // Register the transport interfaces in the proxy server
+    m_proxyServer->registerTransportInterface(m_webSocketServer);
+    m_proxyServer->registerTransportInterface(m_tcpSocketServer);
+
+    // Start the server
     qCDebug(dcEngine()) << "Starting proxy server";
     m_proxyServer->startServer();
 
+    // Start the monitor server
     m_monitorServer = new MonitorServer(configuration->monitorSocketFileName(), this);
     m_monitorServer->startServer();
 
@@ -145,6 +157,11 @@ Authenticator *Engine::authenticator() const
 ProxyServer *Engine::proxyServer() const
 {
     return m_proxyServer;
+}
+
+TcpSocketServer *Engine::tcpSocketServer() const
+{
+    return m_tcpSocketServer;
 }
 
 WebSocketServer *Engine::webSocketServer() const

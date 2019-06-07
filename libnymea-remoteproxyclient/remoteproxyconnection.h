@@ -147,6 +147,7 @@ public slots:
     bool authenticate(const QString &token, const QString &nonce = QString());
     void disconnectServer();
     bool sendData(const QByteArray &data);
+
 };
 
 }

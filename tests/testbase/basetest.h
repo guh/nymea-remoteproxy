@@ -72,8 +72,8 @@ protected:
     void startServer();
     void stopServer();
 
-    QVariant invokeApiCall(const QString &method, const QVariantMap params = QVariantMap(), bool remainsConnected = true);
-    QVariant injectSocketData(const QByteArray &data);
+    QVariant invokeWebSocketApiCall(const QString &method, const QVariantMap params = QVariantMap(), bool remainsConnected = true);
+    QVariant injectWebSocketData(const QByteArray &data);
 
 protected slots:
     void initTestCase();

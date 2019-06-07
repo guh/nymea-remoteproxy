@@ -32,6 +32,7 @@
 #include "logengine.h"
 #include "proxyserver.h"
 #include "monitorserver.h"
+#include "tcpsocketserver.h"
 #include "websocketserver.h"
 #include "proxyconfiguration.h"
 #include "authentication/authenticator.h"
@@ -61,6 +62,7 @@ public:
     ProxyConfiguration *configuration() const;
     Authenticator *authenticator() const;
     ProxyServer *proxyServer() const;
+    TcpSocketServer *tcpSocketServer() const;
     WebSocketServer *webSocketServer() const;
     MonitorServer *monitorServer() const;
     LogEngine *logEngine() const;
@@ -82,6 +84,7 @@ private:
     ProxyConfiguration *m_configuration = nullptr;
     Authenticator *m_authenticator = nullptr;
     ProxyServer *m_proxyServer = nullptr;
+    TcpSocketServer *m_tcpSocketServer = nullptr;
     WebSocketServer *m_webSocketServer = nullptr;
     MonitorServer *m_monitorServer = nullptr;
     LogEngine *m_logEngine = nullptr;

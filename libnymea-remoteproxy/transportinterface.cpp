@@ -29,14 +29,24 @@ TransportInterface::TransportInterface(QObject *parent) :
 
 }
 
+TransportInterface::~TransportInterface()
+{
+
+}
+
 QString TransportInterface::serverName() const
 {
     return m_serverName;
 }
 
-TransportInterface::~TransportInterface()
+QUrl TransportInterface::serverUrl() const
 {
+    return m_serverUrl;
+}
 
+void TransportInterface::setServerUrl(const QUrl &serverUrl)
+{
+    m_serverUrl = serverUrl;
 }
 
 }

@@ -40,10 +40,7 @@ public:
     explicit WebSocketServer(bool sslEnabled, const QSslConfiguration &sslConfiguration, QObject *parent = nullptr);
     ~WebSocketServer() override;
 
-    QUrl serverUrl() const;
-    void setServerUrl(const QUrl &serverUrl);
-
-    bool running() const;
+    bool running() const override;
 
     QSslConfiguration sslConfiguration() const;
 
@@ -51,7 +48,6 @@ public:
     void killClientConnection(const QUuid &clientId, const QString &killReason) override;
 
 private:
-    QUrl m_serverUrl;
     QWebSocketServer *m_server = nullptr;
     bool m_sslEnabled;
     QSslConfiguration m_sslConfiguration;

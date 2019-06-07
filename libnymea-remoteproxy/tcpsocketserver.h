@@ -22,6 +22,7 @@
 #ifndef TCPSOCKETSERVER_H
 #define TCPSOCKETSERVER_H
 
+#include <QUuid>
 #include <QObject>
 #include <QTcpServer>
 #include <QSslConfiguration>
@@ -35,13 +36,12 @@ class SslServer: public QTcpServer
 {
     Q_OBJECT
 public:
-    SslServer(bool sslEnabled, const QSslConfiguration &config, QObject *parent = nullptr):
-        QTcpServer(parent),
-        m_sslEnabled(sslEnabled),
-        m_config(config)
-    {
+    explicit SslServer(bool sslEnabled, const QSslConfiguration &config, QObject *parent = nullptr);
+    ~SslServer() override = default;
 
-    }
+private:
+    bool m_sslEnabled = false;
+    QSslConfiguration m_config;
 
 signals:
     void clientConnected(QSslSocket *socket);
@@ -55,9 +55,6 @@ private slots:
     void onClientDisconnected();
     void onSocketReadyRead();
 
-private:
-    bool m_sslEnabled = false;
-    QSslConfiguration m_config;
 };
 
 
@@ -68,22 +65,23 @@ public:
     explicit TcpSocketServer(bool sslEnabled, const QSslConfiguration &sslConfiguration, QObject *parent = nullptr);
     ~TcpSocketServer() override;
 
-    quint16 port() const;
-    void setPort(quint16 port);
-
-    QHostAddress hostAddress() const;
-    void setHostAddress(const QHostAddress &address);
-
     void sendData(const QUuid &clientId, const QByteArray &data) override;
     void killClientConnection(const QUuid &clientId, const QString &killReason) override;
 
+    bool running() const override;
+
 private:
-    quint16 m_port;
-    QHostAddress m_hostAddress;
     bool m_sslEnabled;
     QSslConfiguration m_sslConfiguration;
 
-    QTcpServer *m_server = nullptr;
+     QHash<QUuid, QTcpSocket *> m_clientList;
+
+    SslServer *m_server = nullptr;
+
+private slots:
+    void onDataAvailable(QSslSocket *client, const QByteArray &data);
+    void onClientConnected(QSslSocket *client);
+    void onClientDisconnected(QSslSocket *client);
 
 public slots:
     bool startServer() override;

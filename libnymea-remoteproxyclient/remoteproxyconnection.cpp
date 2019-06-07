@@ -21,6 +21,7 @@
 
 #include "proxyconnection.h"
 #include "proxyjsonrpcclient.h"
+#include "tcpsocketconnection.h"
 #include "websocketconnection.h"
 #include "remoteproxyconnection.h"
 
@@ -329,8 +330,7 @@ bool RemoteProxyConnection::connectServer(const QUrl &url)
         m_connection = qobject_cast<ProxyConnection *>(new WebSocketConnection(this));
         break;
     case ConnectionTypeTcpSocket:
-        // FIXME:
-        //m_connection = qobject_cast<ProxyConnection *>(new WebSocketConnection(this));
+        m_connection = qobject_cast<ProxyConnection *>(new TcpSocketConnection(this));
         break;
     }
 
