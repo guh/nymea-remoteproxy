@@ -48,10 +48,12 @@ private:
     ProxyConnection *m_connection = nullptr;
 
     int m_commandId = 0;
+    QByteArray m_dataBuffer;
 
     QHash<int, JsonReply *> m_replies;
 
     void sendRequest(const QVariantMap &request);
+    void processDataPackage(const QByteArray &data);
 
 signals:
     void tunnelEstablished(const QString clientName, const QString &clientUuid);

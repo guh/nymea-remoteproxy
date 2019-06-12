@@ -167,6 +167,85 @@ void JsonRpcServer::unregisterHandler(JsonHandler *handler)
     m_handlers.remove(handler->name());
 }
 
+void JsonRpcServer::processDataPackage(ProxyClient *proxyClient, const QByteArray &data)
+{
+    QJsonParseError error;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &error);
+    if(error.error != QJsonParseError::NoError) {
+        qCWarning(dcJsonRpc) << "Failed to parse JSON data" << data << ":" << error.errorString();
+        sendErrorResponse(proxyClient, -1, QString("Failed to parse JSON data: %1").arg(error.errorString()));
+        proxyClient->killConnection("Invalid JSON data received.");
+        return;
+    }
+
+    QVariantMap message = jsonDoc.toVariant().toMap();
+
+    bool success = false;
+    int commandId = message.value("id").toInt(&success);
+    if (!success) {
+        qCWarning(dcJsonRpc()) << "Error parsing command. Missing \"id\":" << message;
+        sendErrorResponse(proxyClient, -1, "Error parsing command. Missing 'id'");
+        proxyClient->killConnection("The id property is missing in the request.");
+        return;
+    }
+
+    QStringList commandList = message.value("method").toString().split('.');
+    if (commandList.count() != 2) {
+        qCWarning(dcJsonRpc) << "Error parsing method.\nGot:" << message.value("method").toString() << "\nExpected: \"Namespace.method\"";
+        sendErrorResponse(proxyClient, commandId, QString("Error parsing method. Got: '%1'', Expected: 'Namespace.method'").arg(message.value("method").toString()));
+        proxyClient->killConnection("Invalid method passed.");
+        return;
+    }
+
+    QString targetNamespace = commandList.first();
+    QString method = commandList.last();
+
+    JsonHandler *handler = m_handlers.value(targetNamespace);
+    if (!handler) {
+        sendErrorResponse(proxyClient, commandId, "No such namespace");
+        proxyClient->killConnection("No such namespace.");
+        return;
+    }
+
+    if (!handler->hasMethod(method)) {
+        sendErrorResponse(proxyClient, commandId, "No such method");
+        proxyClient->killConnection("No such method.");
+        return;
+    }
+
+    QVariantMap params = message.value("params").toMap();
+    QPair<bool, QString> validationResult = handler->validateParams(method, params);
+    if (!validationResult.first) {
+        sendErrorResponse(proxyClient, commandId,  "Invalid params: " + validationResult.second);
+        proxyClient->killConnection("Invalid params passed.");
+        return;
+    }
+
+    JsonReply *reply;
+    QMetaObject::invokeMethod(handler, method.toLatin1().data(), Q_RETURN_ARG(JsonReply*, reply), Q_ARG(QVariantMap, params), Q_ARG(ProxyClient *, proxyClient));
+    if (reply->type() == JsonReply::TypeAsync) {
+        m_asyncReplies.insert(reply, proxyClient);
+        reply->setClientId(proxyClient->clientId());
+        reply->setCommandId(commandId);
+
+        connect(reply, &JsonReply::finished, this, &JsonRpcServer::asyncReplyFinished);
+        reply->startWait();
+    } else {
+        Q_ASSERT_X((targetNamespace == "RemoteProxy" && method == "Introspect") || handler->validateReturns(method, reply->data()).first
+                   ,"validating return value", formatAssertion(targetNamespace, method, handler, reply->data()).toLatin1().data());
+
+//        QPair<bool, QString> returnValidation = reply->handler()->validateReturns(reply->method(), reply->data());
+//        if (!returnValidation.first) {
+//            qCWarning(dcJsonRpc()) << "Return value validation failed of sync reply. This should never happen. Please check the source code.";
+//        }
+
+        reply->setClientId(proxyClient->clientId());
+        reply->setCommandId(commandId);
+        sendResponse(proxyClient, commandId, reply->data());
+        reply->deleteLater();
+    }
+}
+
 void JsonRpcServer::setup()
 {
     registerHandler(this);
@@ -245,80 +324,18 @@ void JsonRpcServer::processData(ProxyClient *proxyClient, const QByteArray &data
 
     qCDebug(dcJsonRpcTraffic()) << "Incoming data from" << proxyClient << ": " << data;
 
-    QJsonParseError error;
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &error);
-    if(error.error != QJsonParseError::NoError) {
-        qCWarning(dcJsonRpc) << "Failed to parse JSON data" << data << ":" << error.errorString();
-        sendErrorResponse(proxyClient, -1, QString("Failed to parse JSON data: %1").arg(error.errorString()));
-        proxyClient->killConnection("Invalid JSON data received.");
+    // Handle package fragmentation
+    QList<QByteArray> packages = proxyClient->processData(data);
+
+    // Make sure the buffer size is in range
+    if (proxyClient->bufferSizeViolation()) {
+        qCWarning(dcJsonRpc()) << "Data buffer size violation from" << proxyClient;
+        proxyClient->killConnection("Data buffer size violation. Data >= 10 kB");
         return;
     }
 
-    QVariantMap message = jsonDoc.toVariant().toMap();
-
-    bool success = false;
-    int commandId = message.value("id").toInt(&success);
-    if (!success) {
-        qCWarning(dcJsonRpc()) << "Error parsing command. Missing \"id\":" << message;
-        sendErrorResponse(proxyClient, -1, "Error parsing command. Missing 'id'");
-        proxyClient->killConnection("The id property is missing in the request.");
-        return;
-    }
-
-    QStringList commandList = message.value("method").toString().split('.');
-    if (commandList.count() != 2) {
-        qCWarning(dcJsonRpc) << "Error parsing method.\nGot:" << message.value("method").toString() << "\nExpected: \"Namespace.method\"";
-        sendErrorResponse(proxyClient, commandId, QString("Error parsing method. Got: '%1'', Expected: 'Namespace.method'").arg(message.value("method").toString()));
-        proxyClient->killConnection("Invalid method passed.");
-        return;
-    }
-
-    QString targetNamespace = commandList.first();
-    QString method = commandList.last();
-
-    JsonHandler *handler = m_handlers.value(targetNamespace);
-    if (!handler) {
-        sendErrorResponse(proxyClient, commandId, "No such namespace");
-        proxyClient->killConnection("No such namespace.");
-        return;
-    }
-
-    if (!handler->hasMethod(method)) {
-        sendErrorResponse(proxyClient, commandId, "No such method");
-        proxyClient->killConnection("No such method.");
-        return;
-    }
-
-    QVariantMap params = message.value("params").toMap();
-    QPair<bool, QString> validationResult = handler->validateParams(method, params);
-    if (!validationResult.first) {
-        sendErrorResponse(proxyClient, commandId,  "Invalid params: " + validationResult.second);
-        proxyClient->killConnection("Invalid params passed.");
-        return;
-    }
-
-    JsonReply *reply;
-    QMetaObject::invokeMethod(handler, method.toLatin1().data(), Q_RETURN_ARG(JsonReply*, reply), Q_ARG(QVariantMap, params), Q_ARG(ProxyClient *, proxyClient));
-    if (reply->type() == JsonReply::TypeAsync) {
-        m_asyncReplies.insert(reply, proxyClient);
-        reply->setClientId(proxyClient->clientId());
-        reply->setCommandId(commandId);
-
-        connect(reply, &JsonReply::finished, this, &JsonRpcServer::asyncReplyFinished);
-        reply->startWait();
-    } else {
-        Q_ASSERT_X((targetNamespace == "RemoteProxy" && method == "Introspect") || handler->validateReturns(method, reply->data()).first
-                   ,"validating return value", formatAssertion(targetNamespace, method, handler, reply->data()).toLatin1().data());
-
-//        QPair<bool, QString> returnValidation = reply->handler()->validateReturns(reply->method(), reply->data());
-//        if (!returnValidation.first) {
-//            qCWarning(dcJsonRpc()) << "Return value validation failed of sync reply. This should never happen. Please check the source code.";
-//        }
-
-        reply->setClientId(proxyClient->clientId());
-        reply->setCommandId(commandId);
-        sendResponse(proxyClient, commandId, reply->data());
-        reply->deleteLater();
+    foreach (const QByteArray &package, packages) {
+        processDataPackage(proxyClient, package);
     }
 }
 

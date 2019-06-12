@@ -87,6 +87,11 @@ public:
     void sendData(const QByteArray &data);
     void killConnection(const QString &reason);
 
+    // Json server methods
+    int generateMessageId();
+    QList<QByteArray> processData(const QByteArray &data);
+    bool bufferSizeViolation() const;
+
 private:
     TransportInterface *m_interface = nullptr;
     QTimer *m_timer = nullptr;
@@ -105,6 +110,11 @@ private:
     QString m_nonce;
 
     QString m_userName;
+
+    // Json data information
+    int m_messageId = 0;
+    QByteArray m_dataBuffers;
+    bool m_bufferSizeViolation = false;
 
     quint64 m_rxDataCount = 0;
     quint64 m_txDataCount = 0;

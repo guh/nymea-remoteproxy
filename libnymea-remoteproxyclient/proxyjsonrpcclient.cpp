@@ -67,10 +67,8 @@ void JsonRpcClient::sendRequest(const QVariantMap &request)
     m_connection->sendData(data);
 }
 
-void JsonRpcClient::processData(const QByteArray &data)
+void JsonRpcClient::processDataPackage(const QByteArray &data)
 {
-    qCDebug(dcRemoteProxyClientJsonRpcTraffic()) << "Received data:" << data;
-
     QJsonParseError error;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &error);
     if (error.error != QJsonParseError::NoError) {
@@ -110,6 +108,24 @@ void JsonRpcClient::processData(const QByteArray &data)
             QString clientUuid = notificationParams.value("uuid").toString();
             emit tunnelEstablished(clientName, clientUuid);
         }
+    }
+}
+
+void JsonRpcClient::processData(const QByteArray &data)
+{
+    qCDebug(dcRemoteProxyClientJsonRpcTraffic()) << "Received data:" << data;
+
+    // Handle packet fragmentation
+    m_dataBuffer.append(data);
+    int splitIndex = m_dataBuffer.indexOf("}\n{");
+    while (splitIndex > -1) {
+        processDataPackage(m_dataBuffer.left(splitIndex + 1));
+        m_dataBuffer = m_dataBuffer.right(m_dataBuffer.length() - splitIndex - 2);
+        splitIndex = m_dataBuffer.indexOf("}\n{");
+    }
+    if (m_dataBuffer.trimmed().endsWith("}")) {
+        processDataPackage(m_dataBuffer);
+        m_dataBuffer.clear();
     }
 }
 

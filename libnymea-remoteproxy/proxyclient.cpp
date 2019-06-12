@@ -21,6 +21,7 @@
 
 #include "engine.h"
 #include "proxyclient.h"
+#include "loggingcategories.h"
 
 #include <QDateTime>
 
@@ -197,6 +198,42 @@ void ProxyClient::killConnection(const QString &reason)
         return;
 
     m_interface->killClientConnection(m_clientId, reason);
+}
+
+int ProxyClient::generateMessageId()
+{
+    m_messageId++;
+    return m_messageId;
+}
+
+QList<QByteArray> ProxyClient::processData(const QByteArray &data)
+{
+    QList<QByteArray> packages;
+
+    // Handle packet fragmentation
+    m_dataBuffers.append(data);
+    int splitIndex = m_dataBuffers.indexOf("}\n{");
+    while (splitIndex > -1) {
+        packages.append(m_dataBuffers.left(splitIndex + 1));
+        m_dataBuffers = m_dataBuffers.right(m_dataBuffers.length() - splitIndex - 2);
+        splitIndex = m_dataBuffers.indexOf("}\n{");
+    }
+    if (m_dataBuffers.trimmed().endsWith("}")) {
+        packages.append(m_dataBuffers);
+        m_dataBuffers.clear();
+    }
+
+    if (m_dataBuffers.size() > 1024 * 10) {
+        qCWarning(dcJsonRpc()) << "Client buffer larger than 10KB and no valid data. This is a buffer size violation.";
+        m_bufferSizeViolation = true;
+    }
+
+    return packages;
+}
+
+bool ProxyClient::bufferSizeViolation() const
+{
+    return m_bufferSizeViolation;
 }
 
 QDebug operator<<(QDebug debug, ProxyClient *proxyClient)
