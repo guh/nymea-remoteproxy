@@ -49,8 +49,7 @@ void MockAuthenticator::replyFinished()
 {
     MockAuthenticationReply *reply = static_cast<MockAuthenticationReply *>(sender());
 
-    qCDebug(dcAuthentication()) << name() << "Authentication finished.";
-
+    qCDebug(dcAuthentication()) << name() << "Authentication finished" << reply << reply->authenticationReply();
     setReplyError(reply->authenticationReply(), reply->error());
     setReplyFinished(reply->authenticationReply());
     reply->deleteLater();
@@ -58,10 +57,9 @@ void MockAuthenticator::replyFinished()
 
 AuthenticationReply *MockAuthenticator::authenticate(ProxyClient *proxyClient)
 {
-    qCDebug(dcAuthentication()) << name() << "Start authentication for" << proxyClient << "using token" << proxyClient->token();
+    qCDebug(dcAuthentication()) << name() << "Start authentication for" << proxyClient << "using token" << proxyClient->token() << "Auth duration" << m_timeoutDuration << "[ms]";
 
     AuthenticationReply *authenticationReply = createAuthenticationReply(proxyClient, this);
-
     MockAuthenticationReply *reply = new MockAuthenticationReply(m_timeoutDuration, m_expectedError, authenticationReply, this);
     connect(reply, &MockAuthenticationReply::finished, this, &MockAuthenticator::replyFinished);
 
@@ -75,5 +73,10 @@ MockAuthenticationReply::MockAuthenticationReply(int timeout, Authenticator::Aut
 
 {
     QTimer::singleShot(timeout, this, &MockAuthenticationReply::finished);
+}
+
+MockAuthenticationReply::~MockAuthenticationReply()
+{
+    qCCritical(dcAuthentication()) << "Destroy mock authentication reply";
 }
 

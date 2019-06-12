@@ -34,9 +34,10 @@ ProxyClient::ProxyClient(TransportInterface *interface, const QUuid &clientId, c
 {
     m_creationTimeStamp = QDateTime::currentDateTime().toTime_t();
 
-    connect(&m_timer, &QTimer::timeout, this, &ProxyClient::timeoutOccured);
-    m_timer.setSingleShot(true);
-    m_timer.start(Engine::instance()->configuration()->inactiveTimeout());
+    m_timer = new QTimer(this);
+    connect(m_timer, &QTimer::timeout, this, &ProxyClient::timeoutOccured);
+    m_timer->setSingleShot(true);
+    resetTimer();
 }
 
 QUuid ProxyClient::clientId() const
@@ -68,8 +69,8 @@ void ProxyClient::setAuthenticated(bool isAuthenticated)
 {
     m_authenticated = isAuthenticated;
     if (m_authenticated) {
-        m_timer.stop();
-        m_timer.start(Engine::instance()->configuration()->aloneTimeout());
+        m_timerWaitState = TimerWaitStateAlone;
+        resetTimer();
         emit authenticated();
     }
 }
@@ -83,7 +84,7 @@ void ProxyClient::setTunnelConnected(bool isTunnelConnected)
 {
     m_tunnelConnected = isTunnelConnected;
     if (m_tunnelConnected) {
-        m_timer.stop();
+        m_timer->stop();
         emit tunnelConnected();
     }
 }
@@ -163,6 +164,25 @@ void ProxyClient::addTxDataCount(int dataCount)
     m_txDataCount += static_cast<quint64>(dataCount);
 }
 
+ProxyClient::TimerWaitState ProxyClient::timerWaitState() const
+{
+    return m_timerWaitState;
+}
+
+void ProxyClient::resetTimer()
+{
+    switch (m_timerWaitState) {
+    case TimerWaitStateInactive:
+        m_timer->stop();
+        m_timer->start(Engine::instance()->configuration()->inactiveTimeout());
+        break;
+    case TimerWaitStateAlone:
+        m_timer->stop();
+        m_timer->start(Engine::instance()->configuration()->aloneTimeout());
+        break;
+    }
+}
+
 void ProxyClient::sendData(const QByteArray &data)
 {
     if (!m_interface)
@@ -189,8 +209,8 @@ QDebug operator<<(QDebug debug, ProxyClient *proxyClient)
     debug.nospace() << ", " << proxyClient->clientId().toString();
     debug.nospace() << ", " << proxyClient->userName();
     debug.nospace() << ", " << proxyClient->peerAddress().toString();
-    debug.nospace() << ", " << proxyClient->creationTimeString() << ") ";
-    return debug;
+    debug.nospace() << ", " << proxyClient->creationTimeString() << ")";
+    return debug.space();
 }
 
 }

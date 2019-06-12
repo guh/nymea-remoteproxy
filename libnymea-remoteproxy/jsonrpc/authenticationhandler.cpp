@@ -83,7 +83,7 @@ void AuthenticationHandler::onAuthenticationFinished()
     AuthenticationReply *authenticationReply = static_cast<AuthenticationReply *>(sender());
     authenticationReply->deleteLater();
 
-    qCDebug(dcJsonRpc()) << "Authentication response ready for" << authenticationReply->proxyClient() << authenticationReply->error();
+    qCDebug(dcJsonRpc()) << "Authentication reply finished";
     JsonReply *jsonReply = m_runningAuthentications.take(authenticationReply);
 
     if (authenticationReply->error() != Authenticator::AuthenticationErrorNoError) {
@@ -94,10 +94,12 @@ void AuthenticationHandler::onAuthenticationFinished()
         jsonReply->setSuccess(true);
     }
 
-    // Set client authenticated
-    authenticationReply->proxyClient()->setAuthenticated(authenticationReply->error() == Authenticator::AuthenticationErrorNoError);
+    // Set client authenticated if still there
+    if (!authenticationReply->proxyClient().isNull()) {
+        authenticationReply->proxyClient()->setAuthenticated(authenticationReply->error() == Authenticator::AuthenticationErrorNoError);
+        jsonReply->setData(errorToReply(authenticationReply->error()));
+    }
 
-    jsonReply->setData(errorToReply(authenticationReply->error()));
     jsonReply->finished();
 }
 

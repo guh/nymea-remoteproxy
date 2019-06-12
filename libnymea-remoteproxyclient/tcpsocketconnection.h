@@ -48,6 +48,7 @@ public:
 
 private:
     QSslSocket *m_tcpSocket = nullptr;
+    bool m_ssl = false;
 
 private slots:
     void onDisconnected();

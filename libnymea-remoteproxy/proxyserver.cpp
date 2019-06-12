@@ -268,6 +268,8 @@ void ProxyServer::onClientDataAvailable(const QUuid &clientId, const QByteArray 
     if (!proxyClient->isAuthenticated() && !proxyClient->isTunnelConnected()) {
         qCDebug(dcProxyServerTraffic()) << "Client data available" << proxyClient << qUtf8Printable(data);
         m_jsonRpcServer->processData(proxyClient, data);
+        // Reset the inactive timer
+        proxyClient->resetTimer();
         return;
     }
 
@@ -368,8 +370,15 @@ void ProxyServer::onProxyClientAuthenticated()
 void ProxyServer::onProxyClientTimeoutOccured()
 {
     ProxyClient *proxyClient = static_cast<ProxyClient *>(sender());
-    qCDebug(dcProxyServer()) << "Timeout occured for" << proxyClient;
-    proxyClient->killConnection("Proxy timeout occuret");
+    qCDebug(dcProxyServer()) << "Timeout occured for" << proxyClient;    
+    switch (proxyClient->timerWaitState()) {
+    case ProxyClient::TimerWaitStateInactive:
+        proxyClient->killConnection("Proxy timeout occuret. The socket was inactive.");
+        break;
+    case ProxyClient::TimerWaitStateAlone:
+        proxyClient->killConnection("Proxy timeout occuret. The tunnel partner did not show up.");
+        break;
+    }
 }
 
 void ProxyServer::startServer()

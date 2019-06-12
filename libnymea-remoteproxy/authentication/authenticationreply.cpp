@@ -20,23 +20,30 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "engine.h"
+#include "loggingcategories.h"
 #include "authenticationreply.h"
 #include "authentication/authenticator.h"
 
 namespace remoteproxy {
 
 AuthenticationReply::AuthenticationReply(ProxyClient *proxyClient, QObject *parent) :
-    QObject(parent),
-    m_proxyClient(proxyClient)
+    QObject(parent)
 {
+    m_proxyClient = proxyClient;
+
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
     connect(m_timer, &QTimer::timeout, this, &AuthenticationReply::onTimeout);
-
+    qCDebug(dcAuthentication) << "Created authentication reply for" << proxyClient << "Timeout:" << Engine::instance()->configuration()->authenticationTimeout() << "[ms]";
     m_timer->start(Engine::instance()->configuration()->authenticationTimeout());
 }
 
-ProxyClient *AuthenticationReply::proxyClient() const
+AuthenticationReply::~AuthenticationReply()
+{
+    qCCritical(dcAuthentication()) << "Destroy authentication reply";
+}
+
+QPointer<ProxyClient> AuthenticationReply::proxyClient() const
 {
     return m_proxyClient;
 }

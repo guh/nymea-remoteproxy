@@ -1,7 +1,7 @@
 INCLUDEPATH += $${PWD}
 
 HEADERS += \
-    $$PWD/tcpsocketconnection.h \
+    $${PWD}/tcpsocketconnection.h \
     $${PWD}/proxyjsonrpcclient.h \
     $${PWD}/jsonreply.h \
     $${PWD}/remoteproxyconnection.h \
@@ -9,7 +9,7 @@ HEADERS += \
     $${PWD}/websocketconnection.h
 
 SOURCES += \
-    $$PWD/tcpsocketconnection.cpp \
+    $${PWD}/tcpsocketconnection.cpp \
     $${PWD}/proxyjsonrpcclient.cpp \
     $${PWD}/jsonreply.cpp \
     $${PWD}/remoteproxyconnection.cpp \

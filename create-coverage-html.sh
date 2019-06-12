@@ -6,7 +6,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/libnymea-remoteproxy:$(pwd)/libny
 # Build
 qmake CONFIG+=coverage CONFIG+=ccache
 make -j$(nproc)
-#make check
+#make test
 make coverage-html
 
 # Clean build

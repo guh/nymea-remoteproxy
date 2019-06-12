@@ -182,7 +182,7 @@ void JsonRpcServer::asyncReplyFinished()
     qCDebug(dcJsonRpc()) << "Async reply finished" << reply->handler()->name() << reply->method() << reply->clientId().toString();
 
     if (!proxyClient) {
-        qCWarning(dcJsonRpc()) << "Got an async reply but the client does not exist any more";
+        qCWarning(dcJsonRpc()) << "Got an async reply but the client does not exist any more.";
         return;
     }
 
@@ -204,6 +204,7 @@ void JsonRpcServer::asyncReplyFinished()
         }
 
     } else {
+        qCWarning(dcJsonRpc()) << "The reply timeouted.";
         sendErrorResponse(proxyClient, reply->commandId(), "Command timed out");
         // Disconnect this client since he requested something that created a timeout
         proxyClient->killConnection("API call timeouted.");
@@ -227,8 +228,14 @@ void JsonRpcServer::unregisterClient(ProxyClient *proxyClient)
         qCWarning(dcJsonRpc()) << "Client was not registered" << proxyClient;
         return;
     }
-
     m_clients.removeAll(proxyClient);
+
+    if (m_asyncReplies.values().contains(proxyClient)) {
+        qCWarning(dcJsonRpc()) << "Client was still waiting for a reply. Clean up reply";
+        JsonReply *reply = m_asyncReplies.key(proxyClient);
+        m_asyncReplies.remove(reply);
+        // Note: the reply will be deleted in the finished slot
+    }
 }
 
 void JsonRpcServer::processData(ProxyClient *proxyClient, const QByteArray &data)
@@ -240,7 +247,6 @@ void JsonRpcServer::processData(ProxyClient *proxyClient, const QByteArray &data
 
     QJsonParseError error;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &error);
-
     if(error.error != QJsonParseError::NoError) {
         qCWarning(dcJsonRpc) << "Failed to parse JSON data" << data << ":" << error.errorString();
         sendErrorResponse(proxyClient, -1, QString("Failed to parse JSON data: %1").arg(error.errorString()));

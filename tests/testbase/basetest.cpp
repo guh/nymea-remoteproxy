@@ -25,8 +25,10 @@
 #include "loggingcategories.h"
 #include "remoteproxyconnection.h"
 
+#include <QSslError>
 #include <QMetaType>
 #include <QSignalSpy>
+#include <QSslSocket>
 #include <QWebSocket>
 #include <QJsonDocument>
 #include <QWebSocketServer>
@@ -41,15 +43,33 @@ void BaseTest::loadConfiguration(const QString &fileName)
 {
     qDebug() << "Load test configurations" << fileName;
     m_configuration->loadConfiguration(fileName);
-    restartEngine();
+    //restartEngine();
 }
 
 void BaseTest::cleanUpEngine()
 {
+    qDebug() << "Clean up engine";
     if (Engine::exists()) {
         Engine::instance()->stop();
         Engine::instance()->destroy();
         QVERIFY(!Engine::exists());
+    }
+
+    if (m_mockAuthenticator) {
+        delete m_mockAuthenticator;
+        m_mockAuthenticator = nullptr;
+    }
+
+    if (m_dummyAuthenticator) {
+        delete  m_dummyAuthenticator;
+        m_dummyAuthenticator = nullptr;
+    }
+
+    m_authenticator = nullptr;
+
+    if (m_configuration) {
+        delete  m_configuration;
+        m_configuration = nullptr;
     }
 }
 
@@ -61,22 +81,29 @@ void BaseTest::restartEngine()
 
 void BaseTest::startEngine()
 {
+    m_configuration = new ProxyConfiguration(this);
+    loadConfiguration(":/test-configuration.conf");
+
+    m_dummyAuthenticator = new DummyAuthenticator(this);
+    m_mockAuthenticator = new MockAuthenticator(this);
+    m_authenticator = qobject_cast<Authenticator *>(m_mockAuthenticator);
     if (!Engine::exists()) {
         Engine::instance()->setAuthenticator(m_authenticator);
         Engine::instance()->setDeveloperModeEnabled(true);
         QVERIFY(Engine::exists());
+        QVERIFY(!Engine::instance()->running());
     }
 }
 
 void BaseTest::startServer()
 {
-    startEngine();
+    restartEngine();
 
     if (!Engine::instance()->running()) {
         QSignalSpy runningSpy(Engine::instance(), &Engine::runningChanged);
         Engine::instance()->setDeveloperModeEnabled(true);
         Engine::instance()->start(m_configuration);
-        runningSpy.wait(100);
+        runningSpy.wait(200);
         QVERIFY(runningSpy.count() == 1);
     }
 
@@ -94,6 +121,8 @@ void BaseTest::stopServer()
 
     Engine::instance()->stop();
     QVERIFY(!Engine::instance()->running());
+
+    cleanUpEngine();
 }
 
 QVariant BaseTest::invokeWebSocketApiCall(const QString &method, const QVariantMap params, bool remainsConnected)
@@ -191,19 +220,116 @@ QVariant BaseTest::injectWebSocketData(const QByteArray &data)
     return QVariant();
 }
 
+QVariant BaseTest::invokeTcpSocketApiCall(const QString &method, const QVariantMap params, bool remainsConnected)
+{
+    Q_UNUSED(remainsConnected)
+
+    QVariantMap request;
+    request.insert("id", m_commandCounter);
+    request.insert("method", method);
+    request.insert("params", params);
+    QJsonDocument jsonDoc = QJsonDocument::fromVariant(request);
+
+    QSslSocket *socket = new QSslSocket(this);
+    typedef void (QSslSocket:: *sslErrorsSignal)(const QList<QSslError> &);
+    QObject::connect(socket, static_cast<sslErrorsSignal>(&QSslSocket::sslErrors), this, &BaseTest::sslSocketSslErrors);
+
+    QSignalSpy spyConnection(socket, &QSslSocket::connected);
+    socket->connectToHostEncrypted(Engine::instance()->tcpSocketServer()->serverUrl().host(),
+                                   static_cast<quint16>(Engine::instance()->tcpSocketServer()->serverUrl().port()));
+    spyConnection.wait();
+    if (spyConnection.count() == 0) {
+        return QVariant();
+    }
+
+    QSignalSpy dataSpy(socket, &QSslSocket::readyRead);
+    socket->write(jsonDoc.toJson(QJsonDocument::Compact) + '\n');
+    // FIXME: check why it waits the full time here
+    dataSpy.wait(500);
+    if (dataSpy.count() != 1) {
+        qWarning() << "No data received";
+        return QVariant();
+    }
+
+    QByteArray data = socket->readAll();
+    socket->close();
+    socket->deleteLater();
+
+    // Make sure the response ends with '}\n'
+    if (!data.endsWith("}\n")) {
+        qWarning() << "JSON data does not end with \"}\n\"";
+        return QVariant();
+    }
+
+    // Make sure the response it a valid JSON string
+    QJsonParseError error;
+    jsonDoc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "JSON parser error" << error.errorString();
+        return QVariant();
+    }
+
+    QVariantMap response = jsonDoc.toVariant().toMap();
+
+    if (response.value("id").toInt() == m_commandCounter) {
+        m_commandCounter++;
+        return jsonDoc.toVariant();
+    }
+
+    m_commandCounter++;
+    return QVariant();
+}
+
+QVariant BaseTest::injectTcpSocketData(const QByteArray &data)
+{
+    QSslSocket *socket = new QSslSocket(this);
+    typedef void (QSslSocket:: *sslErrorsSignal)(const QList<QSslError> &);
+    QObject::connect(socket, static_cast<sslErrorsSignal>(&QSslSocket::sslErrors), this, &BaseTest::sslSocketSslErrors);
+
+    QSignalSpy spyConnection(socket, &QSslSocket::connected);
+    socket->connectToHostEncrypted(Engine::instance()->tcpSocketServer()->serverUrl().host(),
+                                   static_cast<quint16>(Engine::instance()->tcpSocketServer()->serverUrl().port()));
+    spyConnection.wait();
+    if (spyConnection.count() == 0) {
+        return QVariant();
+    }
+
+    QSignalSpy dataSpy(socket, &QSslSocket::readyRead);
+    socket->write(data + '\n');
+    dataSpy.wait();
+    // FIXME: check why it waits the full time here
+    dataSpy.wait(500);
+    if (dataSpy.count() != 1) {
+        qWarning() << "No data received";
+        return QVariant();
+    }
+
+    QByteArray socketData = socket->readAll();
+    socket->close();
+    socket->deleteLater();
+
+    // Make sure the response ends with '}\n'
+    if (!socketData.endsWith("}\n")) {
+        qWarning() << "JSON data does not end with \"}\n\"";
+        return QVariant();
+    }
+
+    // Make sure the response it a valid JSON string
+    QJsonParseError error;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(socketData, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "JSON parser error" << error.errorString();
+        return QVariant();
+    }
+
+    m_commandCounter++;
+    return jsonDoc.toVariant();
+}
+
 void BaseTest::initTestCase()
 {
     qRegisterMetaType<RemoteProxyConnection::State>();
     qRegisterMetaType<RemoteProxyConnection::ConnectionType>();
-
-    m_configuration = new ProxyConfiguration(this);
-    m_configuration->loadConfiguration(":/test-configuration.conf");
-
-    m_mockAuthenticator = new MockAuthenticator(this);
-    m_dummyAuthenticator = new DummyAuthenticator(this);
-    //m_awsAuthenticator = new AwsAuthenticator(m_configuration->awsCredentialsUrl(), this);
-
-    m_authenticator = qobject_cast<Authenticator *>(m_mockAuthenticator);
 
     m_testToken = "eyJraWQiOiJXdnFFT3prVVh5VDlINzFyRUpoNWdxRnkxNFhnR2l3SFAzVEIzUFQ1V3ZrPSIsImFsZyI6IlJT"
                   "MjU2In0.eyJzdWIiOiJmZTJmZDNlNC1hMGJhLTQ1OTUtOWRiZS00ZDkxYjRiMjFlMzUiLCJhdWQiOiI4cmpoZ"
@@ -218,20 +344,13 @@ void BaseTest::initTestCase()
                   "pQbj58v1vktaAEATdmKmlzmcix-HJK9wWHRSuv3TsNa8DGxvcPOoeTu8Vql7krZ-y7Zu-s2WsgeP4VxyT80VE"
                   "T_xh6pMkOhE6g";
 
-    qCDebug(dcApplication()) << "Init test case.";
-    restartEngine();
+    qCDebug(dcApplication()) << "Init test case done.";
+    //restartEngine();
 }
 
 void BaseTest::cleanupTestCase()
 {
     qCDebug(dcApplication()) << "Clean up test case.";
-    delete m_configuration;
-    delete m_mockAuthenticator;
-    delete m_dummyAuthenticator;
-    //delete m_awsAuthenticator;
-
-    m_authenticator = nullptr;
-
     cleanUpEngine();
 }
 

@@ -11,7 +11,9 @@ server.depends = libnymea-remoteproxy
 client.depends = libnymea-remoteproxyclient
 tests.depends = libnymea-remoteproxy libnymea-remoteproxyclient
 
-test.commands = LD_LIBRARY_PATH=$$top_builddir/libnymea-remoteproxy:$$top_builddir/libnymea-remoteproxyclient make check
+test.commands = LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$$top_builddir/libnymea-remoteproxy:$$top_builddir/libnymea-remoteproxyclient \
+                LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$$top_srcdir/libnymea-remoteproxy:$$top_srcdir/libnymea-remoteproxyclient \
+                make check
 QMAKE_EXTRA_TARGETS += test
 
 message("----------------------------------------------------------")

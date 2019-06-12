@@ -31,6 +31,7 @@ TcpSocketConnection::TcpSocketConnection(QObject *parent) :
 
     connect(m_tcpSocket, &QSslSocket::disconnected, this, &TcpSocketConnection::onDisconnected);
     connect(m_tcpSocket, &QSslSocket::encrypted, this, &TcpSocketConnection::onEncrypted);
+    connect(m_tcpSocket, &QSslSocket::readyRead, this, &TcpSocketConnection::onReadyRead);
     connect(m_tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
     connect(m_tcpSocket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), this, SLOT(onStateChanged(QAbstractSocket::SocketState)));
     connect(m_tcpSocket, SIGNAL(sslErrors(QList<QSslError>)), this, SIGNAL(sslErrors(QList<QSslError>)));
@@ -65,6 +66,7 @@ void TcpSocketConnection::onDisconnected()
 void TcpSocketConnection::onEncrypted()
 {
     qCDebug(dcRemoteProxyClientTcpSocket()) << "Connection encrypted";
+    setConnected(true);
 }
 
 void TcpSocketConnection::onError(QAbstractSocket::SocketError error)
@@ -80,7 +82,9 @@ void TcpSocketConnection::onStateChanged(QAbstractSocket::SocketState state)
     switch (state) {
     case QAbstractSocket::ConnectedState:
         qCDebug(dcRemoteProxyClientTcpSocket()) << "Connected with" << serverUrl().toString();
-        setConnected(true);
+        if (!m_ssl) {
+            setConnected(true);
+        }
         break;
     default:
         setConnected(false);
@@ -97,12 +101,13 @@ void TcpSocketConnection::onReadyRead()
 
 void TcpSocketConnection::connectServer(const QUrl &serverUrl)
 {
-    qCDebug(dcRemoteProxyClientTcpSocket()) << "Connecting to" << this->serverUrl().toString();
     setServerUrl(serverUrl);
+    qCDebug(dcRemoteProxyClientTcpSocket()) << "Connecting to" << this->serverUrl().toString();
 
     if (serverUrl.scheme() == "tcp") {
         m_tcpSocket->connectToHost(QHostAddress(this->serverUrl().host()), static_cast<quint16>(this->serverUrl().port()));
     } else {
+        m_ssl = true;
         m_tcpSocket->connectToHostEncrypted(this->serverUrl().host(), static_cast<quint16>(this->serverUrl().port()));
     }
 }

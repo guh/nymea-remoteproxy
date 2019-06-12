@@ -313,23 +313,18 @@ void RemoteProxyConnection::onTunnelEstablished(const QString &clientName, const
 
 bool RemoteProxyConnection::connectServer(const QUrl &url)
 {
-    if (url.scheme() != "wss") {
-        // FIXME: support also tcp
-        qCWarning(dcRemoteProxyClientConnection()) << "Unsupported connection type" << url.scheme() << "Default to wss";
-        m_serverUrl.setScheme("wss");
-    }
-
     m_serverUrl = url;
-    m_connectionType = ConnectionTypeWebSocket;
     m_error = QAbstractSocket::UnknownSocketError;
 
     cleanUp();
 
     switch (m_connectionType) {
     case ConnectionTypeWebSocket:
+        qCDebug(dcRemoteProxyClientConnection()) << "Creating a web socket connection to" << url.toString();
         m_connection = qobject_cast<ProxyConnection *>(new WebSocketConnection(this));
         break;
     case ConnectionTypeTcpSocket:
+        qCDebug(dcRemoteProxyClientConnection()) << "Creating a TCP socket connection to" << url.toString();
         m_connection = qobject_cast<ProxyConnection *>(new TcpSocketConnection(this));
         break;
     }

@@ -23,7 +23,7 @@ ccache {
     QMAKE_CXX = ccache g++
 }
 
-coverage {<
+coverage {
     # Note: this works only if you build in the source dir
     OBJECTS_DIR =
     MOC_DIR =
