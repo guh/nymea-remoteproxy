@@ -76,6 +76,7 @@ private slots:
 
     // TCP Websocket combinations
     void tcpRemoteConnection();
+    void tcpWebsocketRemoteConnection();
 
 };
 
