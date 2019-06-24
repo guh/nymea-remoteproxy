@@ -90,7 +90,7 @@ public:
     // Json server methods
     int generateMessageId();
     QList<QByteArray> processData(const QByteArray &data);
-    bool bufferSizeViolation() const;
+    int bufferSize() const;
 
 private:
     TransportInterface *m_interface = nullptr;

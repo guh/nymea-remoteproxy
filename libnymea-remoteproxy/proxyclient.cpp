@@ -223,17 +223,12 @@ QList<QByteArray> ProxyClient::processData(const QByteArray &data)
         m_dataBuffers.clear();
     }
 
-    if (m_dataBuffers.size() > 1024 * 10) {
-        qCWarning(dcJsonRpc()) << "Client buffer larger than 10KB and no valid data. This is a buffer size violation.";
-        m_bufferSizeViolation = true;
-    }
-
     return packages;
 }
 
-bool ProxyClient::bufferSizeViolation() const
+int ProxyClient::bufferSize() const
 {
-    return m_bufferSizeViolation;
+    return m_dataBuffers.size();
 }
 
 QDebug operator<<(QDebug debug, ProxyClient *proxyClient)

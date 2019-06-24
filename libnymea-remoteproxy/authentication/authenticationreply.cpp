@@ -40,7 +40,7 @@ AuthenticationReply::AuthenticationReply(ProxyClient *proxyClient, QObject *pare
 
 AuthenticationReply::~AuthenticationReply()
 {
-    qCCritical(dcAuthentication()) << "Destroy authentication reply";
+
 }
 
 QPointer<ProxyClient> AuthenticationReply::proxyClient() const

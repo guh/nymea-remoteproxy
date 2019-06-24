@@ -328,9 +328,9 @@ void JsonRpcServer::processData(ProxyClient *proxyClient, const QByteArray &data
     QList<QByteArray> packages = proxyClient->processData(data);
 
     // Make sure the buffer size is in range
-    if (proxyClient->bufferSizeViolation()) {
+    if (proxyClient->bufferSize() > 1024 * 10) {
         qCWarning(dcJsonRpc()) << "Data buffer size violation from" << proxyClient;
-        proxyClient->killConnection("Data buffer size violation. Data >= 10 kB");
+        proxyClient->killConnection("Data buffer size violation.");
         return;
     }
 
