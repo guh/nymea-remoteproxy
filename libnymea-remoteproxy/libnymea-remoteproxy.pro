@@ -56,7 +56,7 @@ SOURCES += \
 
 # install header file with relative subdirectory
 for(header, HEADERS) {
-    path = /usr/include/nymea-remoteproxy/$${dirname(header)}
+    path = $$[QT_INSTALL_PREFIX]/include/nymea-remoteproxy/$${dirname(header)}
     eval(headers_$${path}.files += $${header})
     eval(headers_$${path}.path = $${path})
     eval(INSTALLS *= headers_$${path})
